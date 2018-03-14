@@ -1,0 +1,107 @@
+import org.gradle.api.attributes.*
+import org.gradle.api.internal.component.*
+import org.gradle.api.publish.maven.internal.publication.MavenPublicationInternal
+import org.gradle.language.cpp.internal.*
+
+
+apply plugin: 'maven-publish'
+
+Usage runtimeUsage = objects.named(Usage.class, Usage.NATIVE_RUNTIME);
+Usage linkUsage = objects.named(Usage.class, Usage.NATIVE_LINK);
+
+class LibComponent implements SoftwareComponentInternal, ComponentWithVariants {
+
+    Set<SoftwareComponent> variants = []
+    Set<UsageContext>      usages = []
+
+    @Override
+    Set<? extends SoftwareComponent> getVariants() { return variants }
+
+    @Override
+    String getName() { return "Lib" }
+
+    @Override
+    Set<? extends UsageContext> getUsages() { return usages }
+}
+
+configurations {
+    lib_macos_link {
+        attributes.attribute(Attribute.of("platform", String.class), "macos")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, linkUsage)
+    }
+    lib_linux_link {
+        attributes.attribute(Attribute.of("platform", String.class), "linux")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, linkUsage)
+    }
+    lib_macos_runtime {
+        attributes.attribute(Attribute.of("platform", String.class), "macos")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, runtimeUsage)
+    }
+    lib_linux_runtime {
+        attributes.attribute(Attribute.of("platform", String.class), "linux")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, runtimeUsage)
+    }
+
+}
+
+artifacts {
+    lib_macos_link    file('macos')
+    lib_linux_link    file('linux')
+    lib_macos_runtime file('macos')
+    lib_linux_runtime file('linux')
+}
+
+def libComponent = extensions.create(ComponentWithVariants.class, "lib", LibComponent.class)
+
+libComponent.variants.add(new NativeVariant("macos",
+        objects.named(Usage.class, Usage.NATIVE_LINK),
+        configurations.lib_macos_link,
+        objects.named(Usage.class, Usage.NATIVE_RUNTIME),
+        configurations.lib_macos_runtime))
+
+libComponent.variants.add(new NativeVariant("linux",
+        objects.named(Usage.class, Usage.NATIVE_LINK),
+        configurations.lib_linux_link,
+        objects.named(Usage.class, Usage.NATIVE_RUNTIME),
+        configurations.lib_linux_runtime))
+
+
+publishing {
+    repositories {
+        maven {
+            url '../repo'
+        }
+    }
+
+    publications {
+        libPublication(MavenPublication) {
+            groupId 'ttt'
+            artifactId 'lib'
+            version '1.0'
+
+            from libComponent
+        }
+
+        libComponent.variants.forEach { variant ->
+            "${variant.name}Publication"(MavenPublication) {
+                groupId 'ttt'
+                artifactId variant.name
+                version '1.0'
+
+                from variant
+            }
+        }
+
+    }
+}
+/*
+task ttt {
+    doLast {
+        configurations.findAll { it.canBeResolved }.forEach {
+            println()
+            println(it.name)
+            println(it.attributes)
+            println(it.files)
+        }
+    }
+}*/

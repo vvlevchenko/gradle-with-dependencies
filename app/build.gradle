@@ -1,0 +1,72 @@
+import org.gradle.api.attributes.*
+import org.gradle.language.cpp.*
+
+Usage runtimeUsage = objects.named(Usage.class, Usage.NATIVE_RUNTIME);
+Usage linkUsage = objects.named(Usage.class, Usage.NATIVE_LINK);
+
+configurations {
+    app {
+        canBeResolved = false
+        canBeConsumed = false
+    }
+    app_macos_link {
+        extendsFrom app
+        canBeConsumed = false
+        attributes.attribute(Attribute.of("platform", String.class), "macos")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, linkUsage)
+    }
+    app_linux_link {
+        extendsFrom app
+        canBeConsumed = false
+        attributes.attribute(Attribute.of("platform", String.class), "linux")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, linkUsage)
+    }
+    app_macos_runtime {
+        extendsFrom app
+        canBeConsumed = false
+        attributes.attribute(Attribute.of("platform", String.class), "macos")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, runtimeUsage)
+    }
+    app_linux_runtime {
+        extendsFrom app
+        canBeConsumed = false
+        attributes.attribute(Attribute.of("platform", String.class), "linux")
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, runtimeUsage)
+    }
+
+    test {
+        canBeConsumed = false
+        canBeResolved = true
+        transitive = false
+        attributes.attribute(CppBinary.DEBUGGABLE_ATTRIBUTE, true)
+        attributes.attribute(CppBinary.LINKAGE_ATTRIBUTE, Linkage.SHARED)
+        attributes.attribute(CppBinary.OPTIMIZED_ATTRIBUTE, false)
+        attributes.attribute(Usage.USAGE_ATTRIBUTE, linkUsage)
+    }
+
+
+}
+
+repositories {
+    maven {
+        //url '../repo'
+        url '/Users/jetbrains/work/sources/gradle-native-samples/cpp/repo'
+    }
+}
+
+dependencies {
+   // app project(':lib')
+    //app 'ttt:lib:1.0'
+    test 'org.gradle.cpp-samples:list:1.5'
+}
+
+task ttt {
+    doLast {
+        configurations.findAll { it.canBeResolved }.findAll { it.name == "test" }.forEach {
+            println()
+            println(it.name)
+            println(it.attributes)
+            println(it.files)
+        }
+    }
+}
